@@ -1,0 +1,20 @@
+Requires ding.mp3 and error.mp3 in same directory as script.  OSX only.
+
+Syntax: ding [command]
+
+Without a command, ding plays ding.mp3
+
+With a command, ding will execute that command and play ding.mp3 if the command
+completed without error, otherwise error.mp3 will be played.
+
+If the command took more than one second to execute, the elapsed time will be
+shown.  When invoked as 'ding-ts' (eg. via a symlink), the current time as
+hh:mm will also be displayed.
+
+Sounds are sourced from freesound.org:
+http://freesound.org/people/pan14/sounds/263133/ (ding.mp3)
+http://freesound.org/people/rhodesmas/sounds/342756/ (error.mp3)
+
+MIT Licensed.
+
+byron@glob.com.au

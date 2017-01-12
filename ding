@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+
+# requires ding.mp3 and error.mp3 in same directory as script.
+# osx only.
+#
+# syntax: ding [command]
+#
+# without a command, ding plays ding.mp3
+#
+# with a command, ding will execute that command and play ding.mp3 if the
+# command completed without error, otherwise error.mp3 will be played.
+#
+# if the command took more than one second to execute, the elapsed time will be
+# shown.  when invoked as 'ding-ts' (eg. via a symlink), the current time as
+# hh:mm will also be displayed.
+
+import datetime
+import os
+import sys
+from subprocess import CalledProcessError, call, check_call
+
+
+def pretty_timedelta(timedelta):
+    seconds = timedelta.total_seconds()
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if hours > 0:
+        return '%dh%dm%ds' % (hours, minutes, seconds)
+    if minutes > 0:
+        return '%dm%ds' % (minutes, seconds)
+    return '%ds' % seconds
+
+if len(sys.argv) > 1:
+    start = datetime.datetime.now()
+    try:
+        sound = 'error.mp3'
+        check_call(sys.argv[1:])
+        sound = 'ding.mp3'
+    except CalledProcessError as e:
+        pass
+    except OSError as e:
+        print(e.strerror)
+    except Exception as e:
+        print(e)
+    duration = datetime.datetime.now() - start
+    if duration.total_seconds() > 1:
+        if os.path.split(sys.argv[0])[-1] == 'ding-ts':
+            now = datetime.datetime.now()
+            print('[%02d:%02d] Elapsed: %s' % (now.hour, now.minute, pretty_timedelta(duration)))
+        else:
+            print('Elapsed: %s' % pretty_timedelta(duration))
+else:
+    sound = 'ding.mp3'
+
+if os.fork() == 0:
+    file = os.path.join(os.path.dirname(os.path.realpath(__file__)), sound)
+    if os.path.exists(file):
+        call(['afplay', file])
+    else:
+        print('failed to find %s' % sound)
