@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 # requires ding.mp3 and error.mp3 in same directory as script.
-# osx only.
+# osx and linux only.
+# for linux, you must have mpg123 installed
 #
 # syntax: ding [command]
 #
@@ -19,6 +20,7 @@ import os
 import sys
 from subprocess import CalledProcessError, call, check_call
 
+os_version = sys.platform
 
 def pretty_timedelta(timedelta):
     seconds = timedelta.total_seconds()
@@ -55,6 +57,11 @@ else:
 if os.fork() == 0:
     file = os.path.join(os.path.dirname(os.path.realpath(__file__)), sound)
     if os.path.exists(file):
-        call(['afplay', file])
+        if os_version == 'darwin':
+            call(['afplay', file])
+        elif os_version == 'linux':
+            call(['mpg123', '-q', file])
+        else:
+            print('ding supports only MacOS and Linux so far.\nBut you can contribute to it on Github.')
     else:
         print('failed to find %s' % sound)
