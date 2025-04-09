@@ -20,22 +20,6 @@ import time
 from pathlib import Path
 
 
-def pretty_timedelta(seconds: int) -> str:
-    hours, seconds = divmod(seconds, 3600)
-    minutes, seconds = divmod(seconds, 60)
-    if hours > 0:
-        parts = [hours, minutes, seconds]
-    elif minutes > 0:
-        parts = [minutes, seconds]
-    else:
-        parts = [seconds]
-    units = ["s", "m", "h"]
-    result = []
-    for value, unit in zip(reversed(parts), units, strict=False):
-        result.append(f"{value:d}{unit}")
-    return "".join(reversed(result))
-
-
 def main() -> None:
     return_code = 0
     if len(sys.argv) > 1:
