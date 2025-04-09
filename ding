@@ -1,60 +1,82 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# requires ding.mp3 and error.mp3 in same directory as script.
-# osx only.
+# Requires ding.mp3 and error.mp3 in same directory as script.
+# macOS only.
 #
 # syntax: ding [command]
 #
-# without a command, ding plays ding.mp3
+# Without a command, ding plays ding.mp3
 #
-# with a command, ding will execute that command and play ding.mp3 if the
+# With a command, ding will execute that command and play ding.mp3 if the
 # command completed without error, otherwise error.mp3 will be played.
 #
-# if the command took more than one second to execute, the elapsed time will be
-# shown.  when invoked as 'ding-ts' (eg. via a symlink), the current time as
-# hh:mm will also be displayed.
+# If the command took more than one second to execute, the elapsed time will be
+# shown.
 
-import datetime
 import os
+import subprocess
 import sys
-from subprocess import CalledProcessError, call, check_call
+import time
+from pathlib import Path
 
 
-def pretty_timedelta(timedelta):
-    seconds = timedelta.total_seconds()
+def pretty_timedelta(seconds: int) -> str:
     hours, seconds = divmod(seconds, 3600)
     minutes, seconds = divmod(seconds, 60)
     if hours > 0:
-        return '%dh%dm%ds' % (hours, minutes, seconds)
-    if minutes > 0:
-        return '%dm%ds' % (minutes, seconds)
-    return '%ds' % seconds
-
-if len(sys.argv) > 1:
-    start = datetime.datetime.now()
-    try:
-        sound = 'error.mp3'
-        check_call(sys.argv[1:])
-        sound = 'ding.mp3'
-    except CalledProcessError as e:
-        pass
-    except OSError as e:
-        print(e.strerror)
-    except Exception as e:
-        print(e)
-    duration = datetime.datetime.now() - start
-    if duration.total_seconds() > 1:
-        if os.path.split(sys.argv[0])[-1] == 'ding-ts':
-            now = datetime.datetime.now()
-            print('[%02d:%02d] Elapsed: %s' % (now.hour, now.minute, pretty_timedelta(duration)))
-        else:
-            print('Elapsed: %s' % pretty_timedelta(duration))
-else:
-    sound = 'ding.mp3'
-
-if os.fork() == 0:
-    file = os.path.join(os.path.dirname(os.path.realpath(__file__)), sound)
-    if os.path.exists(file):
-        call(['afplay', file])
+        parts = [hours, minutes, seconds]
+    elif minutes > 0:
+        parts = [minutes, seconds]
     else:
-        print('failed to find %s' % sound)
+        parts = [seconds]
+    units = ["s", "m", "h"]
+    result = []
+    for value, unit in zip(reversed(parts), units, strict=False):
+        result.append(f"{value:d}{unit}")
+    return "".join(reversed(result))
+
+
+def main() -> None:
+    return_code = 0
+    if len(sys.argv) > 1:
+        start = time.monotonic()
+
+        try:
+            return_code = subprocess.run(sys.argv[1:], check=True).returncode
+        except subprocess.CalledProcessError as e:
+            return_code = e.returncode
+        except OSError as e:
+            print(e.strerror, file=sys.stderr)
+            return_code = 1
+
+        duration = round(time.monotonic() - start)
+
+        if duration > 5:
+            hours, seconds = divmod(duration, 3600)
+            minutes, seconds = divmod(seconds, 60)
+            if hours > 0:
+                parts = [seconds, minutes, hours]
+            elif minutes > 0:
+                parts = [seconds, minutes]
+            else:
+                parts = [seconds]
+            elapsed = []
+            for value, unit in zip(parts,  ("s", "m", "h"), strict=False):
+                if value > 0:
+                    elapsed.insert(0, f"{value:d}{unit}")
+            elapsed_str = "".join(elapsed)
+            print(f"Elapsed: {elapsed_str}")
+
+    if os.fork() == 0:
+        sound = "ding.mp3" if return_code == 0 else "error.mp3"
+        filename = Path(__file__).resolve().parent / sound
+        if filename.exists():
+            subprocess.run(["afplay", filename], check=False)
+        else:
+            sys.exit(f"ding: failed to find {sound}")
+        sys.exit()
+
+    sys.exit(return_code)
+
+
+main()
