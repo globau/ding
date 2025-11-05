@@ -1,0 +1,10 @@
+[package]
+name = "ding"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+
+[dependencies]
+nix = { version = "0.30.1", features = ["process"] }
+kira = { version = "0.10.6", features = ["symphonia"] }
+humantime = "2.1"

@@ -1,0 +1,68 @@
+name: release
+on: workflow_dispatch
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+           - os: ubuntu-latest
+             name: linux-x86
+           - os: ubuntu-24.04-arm
+             name: linux-arm
+           - os: macos-latest
+             name: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install system dependencies (Linux)
+        if: startsWith(matrix.os, 'ubuntu-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: build release
+        run: cargo build --release
+
+      - name: package binary
+        run: |
+          zip -j ding-${{ matrix.name }}.zip target/release/ding
+
+      - name: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ding-${{ matrix.name }}
+          path: ding-${{ matrix.name }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: download artefact
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artefacts
+          merge-multiple: true
+
+      - name: tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(git rev-parse --short HEAD)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag $TAG
+          git push origin $TAG
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ env.TAG }}
+        run: |
+          gh release create $TAG \
+            --title ding-$TAG \
+            --notes-file README.md \
+            ./artefacts/*
